@@ -172,9 +172,13 @@ if args['dataset'] == 'noise':
 class WarriorDataset(torch.utils.data.Dataset):
     def __init__(self, folder_path, transform=None):
         self.folder_path = folder_path
-        self.transform = transform
         self.image_names = os.listdir(folder_path)
-
+        if transform:
+            self.transform = torchvision.transforms.Compose([
+                torchvision.transforms.Resize((70, 70)),
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
+            ])
     def __len__(self):
         return len(self.image_names)
 
@@ -190,7 +194,7 @@ class WarriorDataset(torch.utils.data.Dataset):
 
 if args['dataset'] == 'easy_worrior':
     folder_path = os.getcwd() + "/Pictures/Warrior"
-    dataset = WarriorDataset(folder_path)
+    dataset = WarriorDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
         dataset,
     shuffle=True, batch_size=1, drop_last=True)
