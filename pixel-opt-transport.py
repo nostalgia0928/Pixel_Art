@@ -24,6 +24,7 @@ from math import sqrt
 from functools import partial, lru_cache
 from torch.nn import functional as F
 from torch.nn import Parameter
+from PIL import Image
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 vis = visdom.Visdom(server= 'http://ncc1.clients.dur.ac.uk', port=8023)
@@ -42,9 +43,14 @@ def type_callback(event):
 
 vis.register_event_handler(type_callback, callback_text_window)
 
+def cycle(iterable):
+    while True:
+        for x in iterable:
+            yield x
+
 args = {
     'width': 32,
-    'dataset': 'mnist',
+    'dataset': 'easy_worrior',
     'n_channels': 3,
     'n_classes': 10,
     'batch_size': 16,
@@ -162,12 +168,53 @@ if args['dataset'] == 'noise':
             yield torch.rand(batch_size, 1, 32,32).to(device), torch.zeros(batch_size, 40).long()
     train_iterator = iter(cycle(inf_dataset(args['batch_size'])))
 
-print(f'> Size of training dataset {len(train_loader.dataset)}')
+#dataset defined by my self
+class WarriorDataset(torch.utils.data.Dataset):
+    def __init__(self, folder_path, transform=None):
+        self.folder_path = folder_path
+        self.transform = transform
+        self.image_names = os.listdir(folder_path)
 
-def cycle(iterable):
-    while True:
-        for x in iterable:
-            yield x
+    def __len__(self):
+        return len(self.image_names)
+
+    def __getitem__(self, index):
+        image_name = self.image_names[index]
+        image_path = os.path.join(self.folder_path, image_name)
+        image = Image.open(image_path)
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image
+
+if args['dataset'] == 'easy_worrior':
+    folder_path = os.getcwd() + "/Pictures/Warrior"
+    dataset = WarriorDataset(folder_path)
+    train_loader = torch.utils.data.DataLoader(
+        dataset,
+    shuffle=True, batch_size=1, drop_last=True)
+    train_iterator = iter(cycle(train_loader))
+
+if args['dataset'] == 'intermediate_pokemon':
+    train_loader = torch.utils.data.DataLoader(
+        torchvision.datasets.CIFAR100('data', train=True, download=True, transform=torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize((0,0,0), (1,1,1))
+        ])),
+    shuffle=True, batch_size=1, drop_last=True)
+    train_iterator = iter(cycle(train_loader))
+
+if args['dataset'] == 'hard_trees':
+    train_loader = torch.utils.data.DataLoader(
+        torchvision.datasets.CIFAR100('data', train=True, download=True, transform=torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize((0,0,0), (1,1,1))
+        ])),
+    shuffle=True, batch_size=1, drop_last=True)
+    train_iterator = iter(cycle(train_loader))
+
+print(f'> Size of training dataset {len(train_loader.dataset)}')
 
 def ot_loss(x, y):
     return ot_loss_fn(x.view(x.size(0),-1), y.view(y.size(0),-1))
