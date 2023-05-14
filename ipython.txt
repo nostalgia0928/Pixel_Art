@@ -1,0 +1,4 @@
+/home2/tbgc56/.local/bin/ipython
+
+
+source miniconda3/bin/activate

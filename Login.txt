@@ -1,0 +1,1 @@
+srun -N 1 -c 2 --gres=gpu:1 -p "tpg-gpu-small" --exclude=gpu3,gpu2,gpu0 --qos="short" -J "got" -t 36:99:99 --pty zsh
