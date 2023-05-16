@@ -50,7 +50,7 @@ def cycle(iterable):
 
 args = {
     'width': 32,
-    'dataset': 'easy_worrior',
+    'dataset': 'mnist',
     'n_channels': 3,
     'n_classes': 10,
     'batch_size': 16,
@@ -177,7 +177,7 @@ class WarriorDataset(torch.utils.data.Dataset):
             self.transform = torchvision.transforms.Compose([
                 torchvision.transforms.Resize((70, 70)),
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
+                torchvision.transforms.Normalize((0, 0, 0, 0), (1, 1, 1, 1))
             ])
     def __len__(self):
         return len(self.image_names)
@@ -283,8 +283,8 @@ def cost(x, y):
     return ((x-y)**2).sum(1).mean()
 
 # grabs a batch of data from the dataset
-xb,cb = next(train_iterator)
-xb,cb = xb.to(device), cb.to(device)
+xb, cb= next(train_iterator)
+xb, cb= xb.to(device), cb.to(device)
 
 while (True):
     
@@ -303,7 +303,7 @@ while (True):
     # p(x | z, p)
 
     p_z = torch.randn(args['batch_size'], args['latent_dim'], 1, 1).to(device)
-    g = net(p_z, palette_data)
+    g = net(p_z)
 
     loss = ot_loss(g, xb) # ((g-xb)**2).mean()
     loss.backward()
