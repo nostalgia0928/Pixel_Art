@@ -54,7 +54,7 @@ def cycle(iterable):
 
 args = {
     'width': 32,
-    'dataset': 'easy_worrior',
+    'dataset': 'mnist',
     'n_channels': 3,
     'n_classes': 10,
     'batch_size': 16,
@@ -197,7 +197,7 @@ class WarriorDataset(torch.utils.data.Dataset):
             self.transform = torchvision.transforms.Compose([
                 torchvision.transforms.Resize((70, 70)),
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
+                torchvision.transforms.Normalize((0, 0, 0, 0), (1, 1, 1, 1))
             ])
 
     def __len__(self):
@@ -313,8 +313,8 @@ def cost(x, y):
 
 
 # grabs a batch of data from the dataset
-# xb,cb = next(train_iterator)
-# xb,cb = xb.to(device), cb.to(device)
+xb, cb= next(train_iterator)
+xb, cb= xb.to(device), cb.to(device)
 
 while (True):
 
