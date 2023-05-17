@@ -54,7 +54,7 @@ def cycle(iterable):
 
 args = {
     'width': 32,
-    'dataset': 'mnist',
+    'dataset': 'easy_worrior',
     'n_channels': 3,
     'n_classes': 10,
     'batch_size': 16,
@@ -197,7 +197,7 @@ class WarriorDataset(torch.utils.data.Dataset):
             self.transform = torchvision.transforms.Compose([
                 torchvision.transforms.Resize((70, 70)),
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0, 0, 0, 0), (1, 1, 1, 1))
+                torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
 
     def __len__(self):
@@ -207,6 +207,7 @@ class WarriorDataset(torch.utils.data.Dataset):
         image_name = self.image_names[index]
         image_path = os.path.join(self.folder_path, image_name)
         image = Image.open(image_path)
+        image = image.convert("RGB")
 
         if self.transform:
             image = self.transform(image)
@@ -319,7 +320,7 @@ xb, cb= xb.to(device), cb.to(device)
 while (True):
 
     # # grabs a batch of data from the dataset
-    if args['dataset'] == 'easy_worrior':
+    if args['dataset'] == 'easy_worrior': # Test case
         xb = next(train_iterator)
         xb = xb.to(device)
     else:
