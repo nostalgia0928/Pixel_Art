@@ -195,7 +195,7 @@ class WarriorDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((70, 70)),
+                torchvision.transforms.Resize((32, 32)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -214,31 +214,77 @@ class WarriorDataset(torch.utils.data.Dataset):
 
         return image
 
+class PokemonDataset(torch.utils.data.Dataset):
+    def __init__(self, folder_path, transform=None):
+        self.folder_path = folder_path
+        self.image_names = os.listdir(folder_path)
+        if transform:
+            self.transform = torchvision.transforms.Compose([
+                torchvision.transforms.Resize((32, 32)),    #default is 32
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
+            ])
 
+    def __len__(self):
+        return len(self.image_names)
+
+    def __getitem__(self, index):
+        image_name = self.image_names[index]
+        image_path = os.path.join(self.folder_path, image_name)
+        image = Image.open(image_path)
+        image = image.convert("RGB")
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image
+
+class TreesDataset(torch.utils.data.Dataset):
+    def __init__(self, folder_path, transform=None):
+        self.folder_path = folder_path
+        self.image_names = os.listdir(folder_path)
+        if transform:
+            self.transform = torchvision.transforms.Compose([
+                torchvision.transforms.Resize((32, 32)),    #default is 32
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
+            ])
+
+    def __len__(self):
+        return len(self.image_names)
+
+    def __getitem__(self, index):
+        image_name = self.image_names[index]
+        image_path = os.path.join(self.folder_path, image_name)
+        image = Image.open(image_path)
+        image = image.convert("RGB")
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image
 if args['dataset'] == 'easy_worrior':
     folder_path = os.getcwd() + "/Pictures/Warrior"
     dataset = WarriorDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        shuffle=True, batch_size=1, drop_last=True)
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'intermediate_pokemon':
+    folder_path = os.getcwd() + "/Pictures/Pokemon"
+    dataset = WarriorDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
-        torchvision.datasets.CIFAR100('data', train=True, download=True, transform=torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
-        ])),
-        shuffle=True, batch_size=1, drop_last=True)
+        dataset,
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'hard_trees':
+    folder_path = os.getcwd() + "/Pictures/Trees"
+    dataset = WarriorDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
-        torchvision.datasets.CIFAR100('data', train=True, download=True, transform=torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
-        ])),
-        shuffle=True, batch_size=1, drop_last=True)
+        dataset,
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 print(f'> Size of training dataset {len(train_loader.dataset)}')
