@@ -314,8 +314,8 @@ def cost(x, y):
 
 
 # grabs a batch of data from the dataset
-xb, cb= next(train_iterator)
-xb, cb= xb.to(device), cb.to(device)
+#xb= next(train_iterator)
+#xb= xb.to(device)
 
 while (True):
 
@@ -324,8 +324,8 @@ while (True):
         xb = next(train_iterator)
         xb = xb.to(device)
     else:
-        xb, cb = next(train_iterator)
-        xb, cb = xb.to(device), cb.to(device)
+        xb,cb = next(train_iterator)
+        xb,cb = xb.to(device), cb.to(device)
 
     # arrays for metrics
     logs = {}
