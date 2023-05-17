@@ -50,7 +50,7 @@ def cycle(iterable):
 
 args = {
     'width': 32,
-    'dataset': 'mnist',
+    'dataset': 'easy_worrior',
     'n_channels': 3,
     'n_classes': 10,
     'batch_size': 16,
@@ -283,14 +283,18 @@ def cost(x, y):
     return ((x-y)**2).sum(1).mean()
 
 # grabs a batch of data from the dataset
-xb, cb= next(train_iterator)
-xb, cb= xb.to(device), cb.to(device)
+#xb= next(train_iterator)
+#xb= xb.to(device)
 
 while (True):
     
     # # grabs a batch of data from the dataset
-    # xb,cb = next(train_iterator)
-    # xb,cb = xb.to(device), cb.to(device)
+    if args['dataset'] == 'easy_worrior':
+        xb = next(train_iterator)
+        xb = xb.to(device)
+    else:
+        xb,cb = next(train_iterator)
+        xb,cb = xb.to(device), cb.to(device)
 
     # arrays for metrics
     logs = {}
