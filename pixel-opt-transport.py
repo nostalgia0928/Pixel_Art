@@ -27,10 +27,11 @@ from torch.nn import Parameter
 from PIL import Image
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-vis = visdom.Visdom(server= 'http://ncc1.clients.dur.ac.uk', port=8023)
+vis = visdom.Visdom(server='http://ncc1.clients.dur.ac.uk', port=8023)
 
 txt = ''
 callback_text_window = vis.text(txt, win='quit', opts={'title': 'type here to stop training safely'})
+
 
 def type_callback(event):
     if event['event_type'] == 'KeyPress':
@@ -41,12 +42,15 @@ def type_callback(event):
             curr_txt += event['key']
         vis.text(curr_txt, win=callback_text_window)
 
+
 vis.register_event_handler(type_callback, callback_text_window)
+
 
 def cycle(iterable):
     while True:
         for x in iterable:
             yield x
+
 
 args = {
     'width': 32,
@@ -55,21 +59,22 @@ args = {
     'n_classes': 10,
     'batch_size': 16,
     'vid_batch': 16,
-    'latent_dim': 8, # lower is better modelling but worst interpolation freedom 
-    'lr' : 0.005,
+    'latent_dim': 8,  # lower is better modelling but worst interpolation freedom
+    'lr': 0.005,
     'log_every': 2
 }
+
 
 def show_video(tensor, win="video", opts=None, num_channels=1):
     if num_channels == 1:
         fmt = "gray"
-        b = (tensor*255).byte().numpy().tobytes()
+        b = (tensor * 255).byte().numpy().tobytes()
     else:
         fmt = "rgb24"
-        b = tensor.permute(0,3,1,2).contiguous()
-        b = b.view(b.size(0), b.size(1)*b.size(2), b.size(3)).contiguous()
-        b = b.permute(0,2,1).contiguous()
-        b = (b*255).byte().numpy().tobytes()
+        b = tensor.permute(0, 3, 1, 2).contiguous()
+        b = b.view(b.size(0), b.size(1) * b.size(2), b.size(3)).contiguous()
+        b = b.permute(0, 2, 1).contiguous()
+        b = (b * 255).byte().numpy().tobytes()
 
     videofile_fd = tempfile.NamedTemporaryFile(suffix='.mp4')
     videofile = videofile_fd.name
@@ -88,15 +93,25 @@ def show_video(tensor, win="video", opts=None, num_channels=1):
     return vis.video(videofile=videofile, win=win, opts=opts)
 
 
-class_names = ['apple','aquarium_fish','baby','bear','beaver','bed','bee','beetle','bicycle','bottle','bowl','boy','bridge','bus','butterfly','camel','can','castle','caterpillar','cattle','chair','chimpanzee','clock','cloud','cockroach','couch','crab','crocodile','cup','dinosaur','dolphin','elephant','flatfish','forest','fox','girl','hamster','house','kangaroo','computer_keyboard','lamp','lawn_mower','leopard','lion','lizard','lobster','man','maple_tree','motorcycle','mountain','mouse','mushroom','oak_tree','orange','orchid','otter','palm_tree','pear','pickup_truck','pine_tree','plain','plate','poppy','porcupine','possum','rabbit','raccoon','ray','road','rocket','rose','sea','seal','shark','shrew','skunk','skyscraper','snail','snake','spider','squirrel','streetcar','sunflower','sweet_pepper','table','tank','telephone','television','tiger','tractor','train','trout','tulip','turtle','wardrobe','whale','willow_tree','wolf','woman','worm',]
+class_names = ['apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle', 'bicycle', 'bottle', 'bowl',
+               'boy', 'bridge', 'bus', 'butterfly', 'camel', 'can', 'castle', 'caterpillar', 'cattle', 'chair',
+               'chimpanzee', 'clock', 'cloud', 'cockroach', 'couch', 'crab', 'crocodile', 'cup', 'dinosaur', 'dolphin',
+               'elephant', 'flatfish', 'forest', 'fox', 'girl', 'hamster', 'house', 'kangaroo', 'computer_keyboard',
+               'lamp', 'lawn_mower', 'leopard', 'lion', 'lizard', 'lobster', 'man', 'maple_tree', 'motorcycle',
+               'mountain', 'mouse', 'mushroom', 'oak_tree', 'orange', 'orchid', 'otter', 'palm_tree', 'pear',
+               'pickup_truck', 'pine_tree', 'plain', 'plate', 'poppy', 'porcupine', 'possum', 'rabbit', 'raccoon',
+               'ray', 'road', 'rocket', 'rose', 'sea', 'seal', 'shark', 'shrew', 'skunk', 'skyscraper', 'snail',
+               'snake', 'spider', 'squirrel', 'streetcar', 'sunflower', 'sweet_pepper', 'table', 'tank', 'telephone',
+               'television', 'tiger', 'tractor', 'train', 'trout', 'tulip', 'turtle', 'wardrobe', 'whale',
+               'willow_tree', 'wolf', 'woman', 'worm', ]
 
 if args['dataset'] == 'cifar100':
     train_loader = torch.utils.data.DataLoader(
         torchvision.datasets.CIFAR100('data', train=True, download=True, transform=torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0,0,0), (1,1,1))
+            torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
         ])),
-    shuffle=True, batch_size=1, drop_last=True)
+        shuffle=True, batch_size=1, drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'mnist':
@@ -105,9 +120,9 @@ if args['dataset'] == 'mnist':
             torchvision.transforms.Grayscale(3),
             torchvision.transforms.Resize(32),
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Lambda(lambda x : 1-x)
+            torchvision.transforms.Lambda(lambda x: 1 - x)
         ])),
-    shuffle=True, batch_size=args['batch_size'], drop_last=True)
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
     class_names = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine']
     train_iterator = iter(cycle(train_loader))
 
@@ -117,58 +132,63 @@ if args['dataset'] == 'fashion':
             torchvision.transforms.Grayscale(3),
             torchvision.transforms.Resize(32),
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Lambda(lambda x : 1-x)
+            torchvision.transforms.Lambda(lambda x: 1 - x)
         ])),
-    shuffle=True, batch_size=args['batch_size'], drop_last=True)
-    class_names = ["T-shirt/top","Trouser","Pullover","Dress","Coat","Sandal","Shirt","Sneaker","Bag","Ankle boot"]
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
+    class_names = ["T-shirt/top", "Trouser", "Pullover", "Dress", "Coat", "Sandal", "Shirt", "Sneaker", "Bag",
+                   "Ankle boot"]
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'celeba':
     train_loader = torch.utils.data.DataLoader(
         torchvision.datasets.CelebA('data', download=True, transform=torchvision.transforms.Compose([
-            torchvision.transforms.Resize([args['width'],args['width']]),
+            torchvision.transforms.Resize([args['width'], args['width']]),
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0,0,0), (1,1,1))
+            torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
         ])),
-    shuffle=True, batch_size=args['batch_size'], drop_last=True)
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'cifar':
     train_loader = torch.utils.data.DataLoader(torchvision.datasets.CIFAR10(
-    root='./data', train=True, download=True, transform=torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize((0,0,0), (1,1,1))
-    ])), 
-    shuffle=True, batch_size=args['batch_size'], drop_last=True)
-    class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+        root='./data', train=True, download=True, transform=torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
+        ])),
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
+    class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag',
+                   'Ankle boot']
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'churches':
     train_loader = torch.utils.data.DataLoader(torchvision.datasets.LSUN(
         "/home2/projects/cgw/lsun", classes=["church_outdoor_train"], transform=torchvision.transforms.Compose([
-         torchvision.transforms.CenterCrop(args['width']),
-         torchvision.transforms.RandomHorizontalFlip(0.5),
-         torchvision.transforms.Resize(args['width']),
-         torchvision.transforms.ToTensor()])), 
-    shuffle=True, batch_size=args['batch_size'], drop_last=True)
+            torchvision.transforms.CenterCrop(args['width']),
+            torchvision.transforms.RandomHorizontalFlip(0.5),
+            torchvision.transforms.Resize(args['width']),
+            torchvision.transforms.ToTensor()])),
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'ffhq':
     train_loader = torch.utils.data.DataLoader(torchvision.datasets.ImageFolder(
         "/home2/projects/cgw/FFHQ-256", transform=torchvision.transforms.Compose([
-         torchvision.transforms.Resize(args['width']),
-         torchvision.transforms.RandomHorizontalFlip(0.5),
-         torchvision.transforms.ToTensor()])), 
-    shuffle=True, batch_size=args['batch_size'], drop_last=True)
+            torchvision.transforms.Resize(args['width']),
+            torchvision.transforms.RandomHorizontalFlip(0.5),
+            torchvision.transforms.ToTensor()])),
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'noise':
     def inf_dataset(batch_size):
         while True:
-            yield torch.rand(batch_size, 1, 32,32).to(device), torch.zeros(batch_size, 40).long()
+            yield torch.rand(batch_size, 1, 32, 32).to(device), torch.zeros(batch_size, 40).long()
+
+
     train_iterator = iter(cycle(inf_dataset(args['batch_size'])))
 
-#dataset defined by my self
+
+# dataset defined by my self
 class WarriorDataset(torch.utils.data.Dataset):
     def __init__(self, folder_path, transform=None):
         self.folder_path = folder_path
@@ -179,6 +199,7 @@ class WarriorDataset(torch.utils.data.Dataset):
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
+
     def __len__(self):
         return len(self.image_names)
 
@@ -192,44 +213,50 @@ class WarriorDataset(torch.utils.data.Dataset):
 
         return image
 
+
 if args['dataset'] == 'easy_worrior':
     folder_path = os.getcwd() + "/Pictures/Warrior"
     dataset = WarriorDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
         dataset,
-    shuffle=True, batch_size=1, drop_last=True)
+        shuffle=True, batch_size=1, drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'intermediate_pokemon':
     train_loader = torch.utils.data.DataLoader(
         torchvision.datasets.CIFAR100('data', train=True, download=True, transform=torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0,0,0), (1,1,1))
+            torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
         ])),
-    shuffle=True, batch_size=1, drop_last=True)
+        shuffle=True, batch_size=1, drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'hard_trees':
     train_loader = torch.utils.data.DataLoader(
         torchvision.datasets.CIFAR100('data', train=True, download=True, transform=torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0,0,0), (1,1,1))
+            torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
         ])),
-    shuffle=True, batch_size=1, drop_last=True)
+        shuffle=True, batch_size=1, drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 print(f'> Size of training dataset {len(train_loader.dataset)}')
 
+
 def ot_loss(x, y):
-    return ot_loss_fn(x.view(x.size(0),-1), y.view(y.size(0),-1))
+    return ot_loss_fn(x.view(x.size(0), -1), y.view(y.size(0), -1))
+
 
 def lerp(a, b, t):
-    return (1-t)*a + t*b
-            
+    return (1 - t) * a + t * b
+
+
 def slerp(a, b, t):
-    omega = torch.acos((a/torch.norm(a, dim=1, keepdim=True)*b/torch.norm(b, dim=1, keepdim=True)).sum(1)).unsqueeze(1)
-    res = (torch.sin((1.0-t)*omega)/torch.sin(omega))*a + (torch.sin(t*omega)/torch.sin(omega)) * b
+    omega = torch.acos(
+        (a / torch.norm(a, dim=1, keepdim=True) * b / torch.norm(b, dim=1, keepdim=True)).sum(1)).unsqueeze(1)
+    res = (torch.sin((1.0 - t) * omega) / torch.sin(omega)) * a + (torch.sin(t * omega) / torch.sin(omega)) * b
     return res
+
 
 class Decoder(nn.Module):
     def __init__(self, latent_dim, n_channels):
@@ -237,18 +264,18 @@ class Decoder(nn.Module):
         self.f1 = nn.Sequential(
             nn.LazyConvTranspose2d(512, 4, stride=1, padding=0),
             nn.LazyBatchNorm2d(),
-            nn.ReLU()) # 4x4
+            nn.ReLU())  # 4x4
         self.f2 = nn.Sequential(
             nn.LazyConvTranspose2d(256, 4, stride=2, padding=1),
             nn.LazyBatchNorm2d(),
-            nn.ReLU()) # 8x8
+            nn.ReLU())  # 8x8
         self.f3 = nn.Sequential(
             nn.LazyConvTranspose2d(128, 4, stride=2, padding=1),
             nn.LazyBatchNorm2d(),
-            nn.ReLU()) # 16x16
+            nn.ReLU())  # 16x16
         self.f4 = nn.Sequential(
             nn.LazyConvTranspose2d(n_channels, 4, stride=2, padding=1),
-            nn.Sigmoid()) # 32x32
+            nn.Sigmoid())  # 32x32
 
     def forward(self, z):
         x = self.f1(z)
@@ -275,22 +302,29 @@ vis.line(
     opts={'legend': ['loss1', 'loss2', 'loss3'], 'ytype': 'log'}
 )
 
+
 def sample_prior():
     p_z = torch.randn(args['batch_size'], args['latent_dim'], 1, 1).to(device)
     return p_z
 
+
 def cost(x, y):
-    return ((x-y)**2).sum(1).mean()
+    return ((x - y) ** 2).sum(1).mean()
+
 
 # grabs a batch of data from the dataset
-xb,cb = next(train_iterator)
-xb,cb = xb.to(device), cb.to(device)
+# xb,cb = next(train_iterator)
+# xb,cb = xb.to(device), cb.to(device)
 
 while (True):
-    
+
     # # grabs a batch of data from the dataset
-    # xb,cb = next(train_iterator)
-    # xb,cb = xb.to(device), cb.to(device)
+    if args['dataset'] == 'easy_worrior':
+        xb = next(train_iterator)
+        xb = xb.to(device)
+    else:
+        xb, cb = next(train_iterator)
+        xb, cb = xb.to(device), cb.to(device)
 
     # arrays for metrics
     logs = {}
@@ -303,9 +337,9 @@ while (True):
     # p(x | z, p)
 
     p_z = torch.randn(args['batch_size'], args['latent_dim'], 1, 1).to(device)
-    g = net(p_z, palette_data)
+    g = net(p_z)
 
-    loss = ot_loss(g, xb) # ((g-xb)**2).mean()
+    loss = ot_loss(g, xb)  # ((g-xb)**2).mean()
     loss.backward()
     opt.step()
 
@@ -333,8 +367,9 @@ while (True):
 
         logs['loss1'] = logs['loss2'] = logs['loss3'] = logs['num_stats'] = 0
 
-        print(f"Memory: { (torch.cuda.max_memory_allocated()/1000000.0) } mb, step = {global_step + 1}: loss = {loss.item():.4f}")
-    
+        print(
+            f"Memory: {(torch.cuda.max_memory_allocated() / 1000000.0)} mb, step = {global_step + 1}: loss = {loss.item():.4f}")
+
         # safely exit the loop
         if len(json.loads(vis.get_window_data('quit'))['content']) > 0:
             vis.text('', win='quit')
@@ -342,9 +377,10 @@ while (True):
             break
 
     if (global_step) % 50 == 49:
-
         vid_batch = args['vid_batch']
-        vis.image(torchvision.utils.make_grid(torch.clamp(g.data[:vid_batch], 0, 1), padding=0, nrow=int(np.sqrt(vid_batch))), win='p_xg0', opts={'title':'p_xg0 reconstructions', 'jpgquality':50})
+        vis.image(
+            torchvision.utils.make_grid(torch.clamp(g.data[:vid_batch], 0, 1), padding=0, nrow=int(np.sqrt(vid_batch))),
+            win='p_xg0', opts={'title': 'p_xg0 reconstructions', 'jpgquality': 50})
 
     if (global_step) % 100 == 99:
         with torch.no_grad():
@@ -357,8 +393,8 @@ while (True):
 
             frames = 64
 
-            ts = torch.linspace(0,1,frames)
-            vsx = args['width']*int(np.sqrt(vid_batch))
+            ts = torch.linspace(0, 1, frames)
+            vsx = args['width'] * int(np.sqrt(vid_batch))
             vid = torch.zeros(frames, 3, vsx, vsx)
 
             for j in range(frames):
@@ -366,7 +402,6 @@ while (True):
                 with torch.no_grad():
                     v = net(zs)
 
-                vid[j] = torchvision.utils.make_grid(torch.clamp(v,0,1), nrow=int(np.sqrt(vid_batch)), padding=0)
+                vid[j] = torchvision.utils.make_grid(torch.clamp(v, 0, 1), nrow=int(np.sqrt(vid_batch)), padding=0)
 
             show_video(vid, num_channels=args['n_channels'])
-
