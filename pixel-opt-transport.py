@@ -366,7 +366,7 @@ def cost(x, y):
 while (True):
 
     # # grabs a batch of data from the dataset
-    if args['dataset'] == 'easy_worrior': # Test case
+    if args['dataset'] == 'intermediate_pokemon': # Test case
         xb = next(train_iterator)
         xb = xb.to(device)
     else:
