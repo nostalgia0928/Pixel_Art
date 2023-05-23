@@ -53,8 +53,8 @@ def cycle(iterable):
 
 
 args = {
-    'width': 32,
-    'dataset': 'easy_worrior',
+    'width': 71,
+    'dataset': 'intermediate_pokemon',
     'n_channels': 3,   #default is 3
     'n_classes': 10,
     'batch_size': 16,
@@ -195,7 +195,7 @@ class WarriorDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((32, 32)),    #default is 32
+                torchvision.transforms.Resize((71, 71)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -220,7 +220,7 @@ class PokemonDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((32, 32)),    #default is 32
+                torchvision.transforms.Resize((71, 71)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -245,7 +245,7 @@ class TreesDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((32, 32)),    #default is 32
+                torchvision.transforms.Resize((71, 71)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
