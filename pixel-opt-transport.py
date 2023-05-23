@@ -55,7 +55,7 @@ def cycle(iterable):
 args = {
     'width': 32,
     'dataset': 'easy_worrior',
-    'n_channels': 3,
+    'n_channels': 3,   #default is 3
     'n_classes': 10,
     'batch_size': 16,
     'vid_batch': 16,
@@ -195,7 +195,7 @@ class WarriorDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((70, 70)),
+                torchvision.transforms.Resize((32, 32)),
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -220,7 +220,7 @@ if args['dataset'] == 'easy_worrior':
     dataset = WarriorDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        shuffle=True, batch_size=1, drop_last=True)
+        shuffle=True, batch_size=args['batch_size'], drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
 if args['dataset'] == 'intermediate_pokemon':
