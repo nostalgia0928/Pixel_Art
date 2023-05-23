@@ -273,7 +273,7 @@ if args['dataset'] == 'easy_worrior':
 
 if args['dataset'] == 'intermediate_pokemon':
     folder_path = os.getcwd() + "/Pictures/Pokemon"
-    dataset = WarriorDataset(folder_path, transform=True)
+    dataset = PokemonDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
         dataset,
         shuffle=True, batch_size=args['batch_size'], drop_last=True)
@@ -281,7 +281,7 @@ if args['dataset'] == 'intermediate_pokemon':
 
 if args['dataset'] == 'hard_trees':
     folder_path = os.getcwd() + "/Pictures/Trees"
-    dataset = WarriorDataset(folder_path, transform=True)
+    dataset = TreesDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
         dataset,
         shuffle=True, batch_size=args['batch_size'], drop_last=True)
@@ -366,7 +366,7 @@ def cost(x, y):
 while (True):
 
     # # grabs a batch of data from the dataset
-    if args['dataset'] == 'easy_worrior': # Test case
+    if args['dataset'] == 'easy_worrior' or args['dataset'] == 'intermediate_pokemon' or args['dataset'] == 'hard_trees': # Test case
         xb = next(train_iterator)
         xb = xb.to(device)
     else:
