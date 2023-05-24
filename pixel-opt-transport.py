@@ -27,7 +27,7 @@ from torch.nn import Parameter
 from PIL import Image
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-vis = visdom.Visdom(server='http://ncc1.clients.dur.ac.uk', port=8023)
+vis = visdom.Visdom(server='http://ncc1.clients.dur.ac.uk', port=10086)
 
 txt = ''
 callback_text_window = vis.text(txt, win='quit', opts={'title': 'type here to stop training safely'})
@@ -53,7 +53,7 @@ def cycle(iterable):
 
 
 args = {
-    'width': 71,
+    'width': 32,
     'dataset': 'intermediate_pokemon',
     'n_channels': 3,   #default is 3
     'n_classes': 10,
@@ -195,7 +195,7 @@ class WarriorDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((71, 71)),    #default is 32
+                torchvision.transforms.Resize((32, 32)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -220,7 +220,7 @@ class PokemonDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((71, 71)),    #default is 32
+                torchvision.transforms.Resize((32, 32)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -245,7 +245,7 @@ class TreesDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((71, 71)),    #default is 32
+                torchvision.transforms.Resize((32, 32)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -273,7 +273,7 @@ if args['dataset'] == 'easy_worrior':
 
 if args['dataset'] == 'intermediate_pokemon':
     folder_path = os.getcwd() + "/Pictures/Pokemon"
-    dataset = WarriorDataset(folder_path, transform=True)
+    dataset = PokemonDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
         dataset,
         shuffle=True, batch_size=args['batch_size'], drop_last=True)
@@ -281,7 +281,7 @@ if args['dataset'] == 'intermediate_pokemon':
 
 if args['dataset'] == 'hard_trees':
     folder_path = os.getcwd() + "/Pictures/Trees"
-    dataset = WarriorDataset(folder_path, transform=True)
+    dataset = TreesDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
         dataset,
         shuffle=True, batch_size=args['batch_size'], drop_last=True)
@@ -366,7 +366,7 @@ def cost(x, y):
 while (True):
 
     # # grabs a batch of data from the dataset
-    if args['dataset'] == 'intermediate_pokemon': # Test case
+    if args['dataset'] == 'easy_worrior' or args['dataset'] == 'intermediate_pokemon' or args['dataset'] == 'hard_trees': # Test case
         xb = next(train_iterator)
         xb = xb.to(device)
     else:
@@ -422,7 +422,7 @@ while (True):
             vis.text('', win='quit')
             print("Exiting safely...")
             break
-
+   
     if (global_step) % 50 == 49:
         vid_batch = args['vid_batch']
         vis.image(
@@ -452,3 +452,4 @@ while (True):
                 vid[j] = torchvision.utils.make_grid(torch.clamp(v, 0, 1), nrow=int(np.sqrt(vid_batch)), padding=0)
 
             show_video(vid, num_channels=args['n_channels'])
+        
