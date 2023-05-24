@@ -27,7 +27,7 @@ from torch.nn import Parameter
 from PIL import Image
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-vis = visdom.Visdom(server='http://ncc1.clients.dur.ac.uk', port=8023)
+vis = visdom.Visdom(server='http://ncc1.clients.dur.ac.uk', port=10086)
 
 txt = ''
 callback_text_window = vis.text(txt, win='quit', opts={'title': 'type here to stop training safely'})
@@ -195,7 +195,7 @@ class WarriorDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((71, 71)),    #default is 32
+                torchvision.transforms.Resize((32, 32)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -220,7 +220,7 @@ class PokemonDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((71, 71)),    #default is 32
+                torchvision.transforms.Resize((32, 32)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -245,7 +245,7 @@ class TreesDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((71, 71)),    #default is 32
+                torchvision.transforms.Resize((32, 32)),    #default is 32
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
@@ -422,7 +422,7 @@ while (True):
             vis.text('', win='quit')
             print("Exiting safely...")
             break
-
+   
     if (global_step) % 50 == 49:
         vid_batch = args['vid_batch']
         vis.image(
@@ -452,3 +452,4 @@ while (True):
                 vid[j] = torchvision.utils.make_grid(torch.clamp(v, 0, 1), nrow=int(np.sqrt(vid_batch)), padding=0)
 
             show_video(vid, num_channels=args['n_channels'])
+        
