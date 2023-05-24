@@ -2,3 +2,5 @@
 
 
 source miniconda3/bin/activate
+
+python -m visdom.server -p 10086

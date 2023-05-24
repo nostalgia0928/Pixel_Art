@@ -53,7 +53,7 @@ def cycle(iterable):
 
 
 args = {
-    'width': 71,
+    'width': 32,
     'dataset': 'intermediate_pokemon',
     'n_channels': 3,   #default is 3
     'n_classes': 10,
