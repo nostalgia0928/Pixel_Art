@@ -45,7 +45,6 @@ def type_callback(event):
 
 vis.register_event_handler(type_callback, callback_text_window)
 
-
 def cycle(iterable):
     while True:
         for x in iterable:
@@ -54,7 +53,7 @@ def cycle(iterable):
 
 args = {
     'width': 32,
-    'dataset': 'intermediate_pokemon',
+    'dataset': 'easy_warrior',
     'n_channels': 3,   #default is 3
     'n_classes': 10,
     'batch_size': 16,
@@ -195,9 +194,9 @@ class WarriorDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((32, 32)),    #default is 32
+                #torchvision.transforms.Resize((32, 32)),    #default is 32
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
+                #torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
 
     def __len__(self):
@@ -263,7 +262,7 @@ class TreesDataset(torch.utils.data.Dataset):
             image = self.transform(image)
 
         return image
-if args['dataset'] == 'easy_worrior':
+if args['dataset'] == 'easy_warrior':
     folder_path = os.getcwd() + "/Pictures/Warrior"
     dataset = WarriorDataset(folder_path, transform=True)
     train_loader = torch.utils.data.DataLoader(
@@ -308,7 +307,7 @@ def slerp(a, b, t):
 class Decoder(nn.Module):
     def __init__(self, latent_dim, n_channels):
         super(Decoder, self).__init__()
-
+        self.n_channels=n_channels
         self.decoder = nn.Sequential(
             nn.LazyConvTranspose2d(512, 4, stride=1, padding=0),
             nn.LazyBatchNorm2d(),
@@ -337,7 +336,7 @@ class Decoder(nn.Module):
     def forward(self, z):
         x = self.decoder(z)
         # Crop from [3, 128, 128] to [3, 69, 44]
-        x = x[:, :, :69, :44]
+        # x = x[:, :, :69, :44]
 
         # change n_channels above to match number of colours
 
@@ -356,13 +355,13 @@ class Decoder(nn.Module):
         # Change n_channels above to match the number of colors
 
         # Apply softmax to convert the output to a probability distribution
-        x = x.view(x.size(0), -1)  # Reshape x to [batch_size, num_features]
+        x = x.contiguous().view(x.size(0), -1)  # Reshape x to [batch_size, num_features]
         x = torch.softmax(x, dim=1)
-        x = x.view(x.size(0), n_channels, 69, 44)  # Reshape back to [batch_size, n_channels, 69, 44]
-
+        #print(x.sum(dim=1))
+        x = x.view(x.size(0), self.n_channels, 69, 44)  # Reshape back to [batch_size, n_channels, 69, 44]
         # Test the softmax code
-        print(x.sum(dim=1))  # Check that the sum is 1 for each channel
-        print(x[0, :, 30, 22])  # Inspect the probability mass function (PMF) for a specific pixel
+        #print(x.sum(dim=(1,2,3)))  # Check that the sum is 1 for each channel
+        #print(x[0, :, 30, 22])  # Inspect the probability mass function (PMF) for a specific pixel
         return x
 
 
@@ -399,7 +398,7 @@ def cost(x, y):
 while (True):
 
     # # grabs a batch of data from the dataset
-    if args['dataset'] == 'easy_worrior' or args['dataset'] == 'intermediate_pokemon' or args['dataset'] == 'hard_trees': # Test case
+    if args['dataset'] == 'easy_warrior' or args['dataset'] == 'intermediate_pokemon' or args['dataset'] == 'hard_trees': # Test case
         xb = next(train_iterator)
         xb = xb.to(device)
     else:
@@ -474,8 +473,11 @@ while (True):
             frames = 64
 
             ts = torch.linspace(0, 1, frames)
-            vsx = args['width'] * int(np.sqrt(vid_batch))
-            vid = torch.zeros(frames, 3, vsx, vsx)
+            #vsx = args['width'] * int(np.sqrt(vid_batch))
+            #vid = torch.zeros(frames, 3, vsx, vsx)
+
+            #Warrior test case
+            vid = torch.zeros(frames, 3, 276, 176)
 
             for j in range(frames):
                 zs = lerp(z1, z2, ts[j])
