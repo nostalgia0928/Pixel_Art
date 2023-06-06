@@ -308,28 +308,61 @@ def slerp(a, b, t):
 class Decoder(nn.Module):
     def __init__(self, latent_dim, n_channels):
         super(Decoder, self).__init__()
-        self.f1 = nn.Sequential(
+
+        self.decoder = nn.Sequential(
             nn.LazyConvTranspose2d(512, 4, stride=1, padding=0),
             nn.LazyBatchNorm2d(),
-            nn.ReLU())  # 4x4
-        self.f2 = nn.Sequential(
+            nn.ReLU(),  # Output: [512, 4, 4]
+
             nn.LazyConvTranspose2d(256, 4, stride=2, padding=1),
             nn.LazyBatchNorm2d(),
-            nn.ReLU())  # 8x8
-        self.f3 = nn.Sequential(
+            nn.ReLU(),  # Output: [256, 8, 8]
+
             nn.LazyConvTranspose2d(128, 4, stride=2, padding=1),
             nn.LazyBatchNorm2d(),
-            nn.ReLU())  # 16x16
-        self.f4 = nn.Sequential(
+            nn.ReLU(),  # Output: [128, 16, 16]
+
+            nn.LazyConvTranspose2d(64, 4, stride=2, padding=1),
+            nn.LazyBatchNorm2d(),
+            nn.ReLU(),  # Output: [64, 32, 32]
+
+            nn.LazyConvTranspose2d(32, 4, stride=2, padding=1),
+            nn.LazyBatchNorm2d(),
+            nn.ReLU(),  # Output: [32, 64, 64]
+
             nn.LazyConvTranspose2d(n_channels, 4, stride=2, padding=1),
-            nn.Sigmoid())  # 32x32
+            nn.Sigmoid()  # Output: [3, 128, 128]
+        )
 
     def forward(self, z):
-        x = self.f1(z)
-        x = self.f2(x)
-        x = self.f3(x)
-        x = self.f4(x)
-        # x = torch.nn.functional.softmax(x, dim=1)
+        x = self.decoder(z)
+        # Crop from [3, 128, 128] to [3, 69, 44]
+        x = x[:, :, :69, :44]
+
+        # change n_channels above to match number of colours
+
+        # 0,0,0,0,1,0,0,0,0,
+        # softmax(0.3, -0.2, 1.5, ...) -> 0.001, 0.0000, 0.9, 0.00
+
+        # # when implementing the softmax, you'll need to remove the sigmoid then do:
+        # may need to view x to make this work
+        # x = torch.softmax(x, dim=1)
+
+        # to test your softmax code is working, do
+        # x.sum(dim=1) , check this is all 1's
+        # inspect say x[0, :, 30, 22] # make sure it looks like a PMF
+        x = x[:, :, :69, :44]
+
+        # Change n_channels above to match the number of colors
+
+        # Apply softmax to convert the output to a probability distribution
+        x = x.view(x.size(0), -1)  # Reshape x to [batch_size, num_features]
+        x = torch.softmax(x, dim=1)
+        x = x.view(x.size(0), n_channels, 69, 44)  # Reshape back to [batch_size, n_channels, 69, 44]
+
+        # Test the softmax code
+        print(x.sum(dim=1))  # Check that the sum is 1 for each channel
+        print(x[0, :, 30, 22])  # Inspect the probability mass function (PMF) for a specific pixel
         return x
 
 
