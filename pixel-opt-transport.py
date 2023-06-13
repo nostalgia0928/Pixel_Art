@@ -219,9 +219,9 @@ class PokemonDataset(torch.utils.data.Dataset):
         self.image_names = os.listdir(folder_path)
         if transform:
             self.transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((32, 32)),    #default is 32
+                #torchvision.transforms.Resize((32, 32)),    #default is 32
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
+                #torchvision.transforms.Normalize((0, 0, 0), (1, 1, 1))
             ])
 
     def __len__(self):
@@ -290,7 +290,7 @@ print(f'> Size of training dataset {len(train_loader.dataset)}')
 
 
 def ot_loss(x, y):
-    return ot_loss_fn(x.view(x.size(0), -1), y.view(y.size(0), -1))
+    return ot_loss_fn(x.contiguous().view(x.size(0), -1), y.view(y.size(0), -1))
 
 
 def lerp(a, b, t):
@@ -304,10 +304,65 @@ def slerp(a, b, t):
     return res
 
 
+###functions for transform###
+def batch_get_unique_colors(rgb_image):   # BCHW
+    rgb_image = rgb_image.permute(1, 0, 2, 3)
+    reshaped_image = rgb_image.contiguous().view(rgb_image.shape[0], -1)
+    unique_colors = torch.unique(reshaped_image, dim=1)
+    #print(unique_colors.size())
+    num_colors = unique_colors.shape[1]
+    #print("Number of unique colors:", num_colors)
+    return unique_colors
+
+
+def batch_rgb_to_palette(rgb_tensor, unique_colors):
+    num_classes = unique_colors.shape[1]
+    reshaped_tensor = rgb_tensor.permute(0, 2, 3, 1).contiguous().view(-1, rgb_tensor.shape[1])
+    unique_colors = unique_colors.t()
+    onehot = (reshaped_tensor[:, None, :] == unique_colors[None, :, :]).all(dim=2)  # None can add new dim
+    #print(onehot.size())
+    onehot = onehot.view(rgb_tensor.shape[0], rgb_tensor.shape[2],
+                         rgb_tensor.shape[3], num_classes).permute(0, 3, 1, 2).float()
+    #print(onehot.size())
+    return onehot
+
+
+def batch_palette_to_rgb(palette_tensor, unique_colors):
+    num_classes = unique_colors.shape[1]
+    reshaped_palette = palette_tensor.permute(0, 2, 3, 1).contiguous().view(-1, num_classes)
+    reshaped_unique_colors = unique_colors.t()
+    rgb_tensor = torch.matmul(reshaped_palette, reshaped_unique_colors)
+    rgb_tensor = rgb_tensor.view(palette_tensor.shape[0], 3, palette_tensor.shape[2], palette_tensor.shape[3])
+    return rgb_tensor
+
+
+def batch_palette_to_softmax(palette_tensor):  # palette_tensor BCHW
+    channels = palette_tensor.shape[-3]
+    reshaped_palette = palette_tensor.permute(0, 2, 3, 1).contiguous().view(-1, channels)
+    #print(reshaped_palette.size())
+    reshaped_palette = torch.softmax(reshaped_palette, dim=1)
+    palette_tensor = reshaped_palette.view(palette_tensor.shape[0], palette_tensor.shape[2], palette_tensor.shape[3],
+                                           channels).permute(0, 3, 1, 2)
+    #print(palette_tensor.size())
+    # Test the softmax code
+    #print(palette_tensor[0, :, 30, 22])
+    #print(sum(palette_tensor[4, :, 30, 22]))  # Inspect the probability mass function (PMF) for a specific pixe
+    return palette_tensor
+
+def batch_softmax_to_palette(softmax_tensor): #BCHW
+    _, indices = torch.max(softmax_tensor, dim=1)
+    #print(indices.size())
+    b, h, w = softmax_tensor.shape[0], softmax_tensor.shape[2], softmax_tensor.shape[3]
+    device = softmax_tensor.device  # Ensure both on GPU
+    palette_tensor = torch.zeros(b, softmax_tensor.shape[1], h, w, device=device)
+    palette_tensor.scatter_(1, indices.unsqueeze(1), 1)  # indice -> (B, 1, H, W) scatter(dim, index ,src) ？？？
+    #print(palette_tensor.size())
+    return palette_tensor
+
+
 class Decoder(nn.Module):
     def __init__(self, latent_dim, n_channels):
         super(Decoder, self).__init__()
-        self.n_channels=n_channels
         self.decoder = nn.Sequential(
             nn.LazyConvTranspose2d(512, 4, stride=1, padding=0),
             nn.LazyBatchNorm2d(),
@@ -330,40 +385,16 @@ class Decoder(nn.Module):
             nn.ReLU(),  # Output: [32, 64, 64]
 
             nn.LazyConvTranspose2d(n_channels, 4, stride=2, padding=1),
-            nn.Sigmoid()  # Output: [3, 128, 128]
+            #nn.Sigmoid()  # Output: [3, 128, 128]
         )
 
     def forward(self, z):
         x = self.decoder(z)
         # Crop from [3, 128, 128] to [3, 69, 44]
-        # x = x[:, :, :69, :44]
-
-        # change n_channels above to match number of colours
-
-        # 0,0,0,0,1,0,0,0,0,
-        # softmax(0.3, -0.2, 1.5, ...) -> 0.001, 0.0000, 0.9, 0.00
-
-        # # when implementing the softmax, you'll need to remove the sigmoid then do:
-        # may need to view x to make this work
-        # x = torch.softmax(x, dim=1)
-
-        # to test your softmax code is working, do
-        # x.sum(dim=1) , check this is all 1's
-        # inspect say x[0, :, 30, 22] # make sure it looks like a PMF
-        x = x[:, :, :69, :44]
-
-        # Change n_channels above to match the number of colors
-
-        # Apply softmax to convert the output to a probability distribution
-        x = x.contiguous().view(x.size(0), -1)  # Reshape x to [batch_size, num_features]
-        x = torch.softmax(x, dim=1)
-        #print(x.sum(dim=1))
-        x = x.view(x.size(0), self.n_channels, 69, 44)  # Reshape back to [batch_size, n_channels, 69, 44]
-        # Test the softmax code
-        #print(x.sum(dim=(1,2,3)))  # Check that the sum is 1 for each channel
-        #print(x[0, :, 30, 22])  # Inspect the probability mass function (PMF) for a specific pixel
+        x = x[:, :, :44, :69]
+        unique_colors = batch_get_unique_colors(x)
+        x = batch_rgb_to_palette(x, unique_colors)
         return x
-
 
 net = Decoder(args['latent_dim'], args['n_channels']).to(device)
 
@@ -401,6 +432,9 @@ while (True):
     if args['dataset'] == 'easy_warrior' or args['dataset'] == 'intermediate_pokemon' or args['dataset'] == 'hard_trees': # Test case
         xb = next(train_iterator)
         xb = xb.to(device)
+        ##RGB to palette
+        unique_colors = batch_get_unique_colors(xb)
+        xb = batch_rgb_to_palette(xb, unique_colors)
     else:
         xb,cb = next(train_iterator)
         xb,cb = xb.to(device), cb.to(device)
@@ -461,30 +495,30 @@ while (True):
             torchvision.utils.make_grid(torch.clamp(g.data[:vid_batch], 0, 1), padding=0, nrow=int(np.sqrt(vid_batch))),
             win='p_xg0', opts={'title': 'p_xg0 reconstructions', 'jpgquality': 50})
 
-    if (global_step) % 100 == 99:
-        with torch.no_grad():
-
-            vid_batch = args['vid_batch']
-
-            # Show latent interpolations SLERP video
-            z1 = sample_prior()[:vid_batch]
-            z2 = sample_prior()[:vid_batch]
-
-            frames = 64
-
-            ts = torch.linspace(0, 1, frames)
-            #vsx = args['width'] * int(np.sqrt(vid_batch))
-            #vid = torch.zeros(frames, 3, vsx, vsx)
-
-            #Warrior test case
-            vid = torch.zeros(frames, 3, 276, 176)
-
-            for j in range(frames):
-                zs = lerp(z1, z2, ts[j])
-                with torch.no_grad():
-                    v = net(zs)
-
-                vid[j] = torchvision.utils.make_grid(torch.clamp(v, 0, 1), nrow=int(np.sqrt(vid_batch)), padding=0)
-
-            show_video(vid, num_channels=args['n_channels'])
+    # if (global_step) % 100 == 99:
+    #     with torch.no_grad():
+    #
+    #         vid_batch = args['vid_batch']
+    #
+    #         # Show latent interpolations SLERP video
+    #         z1 = sample_prior()[:vid_batch]
+    #         z2 = sample_prior()[:vid_batch]
+    #
+    #         frames = 64
+    #
+    #         ts = torch.linspace(0, 1, frames)
+    #         #vsx = args['width'] * int(np.sqrt(vid_batch))
+    #         #vid = torch.zeros(frames, 3, vsx, vsx)
+    #
+    #         #Warrior test case
+    #         vid = torch.zeros(frames, 3, 176, 276)
+    #
+    #         for j in range(frames):
+    #             zs = lerp(z1, z2, ts[j])
+    #             with torch.no_grad():
+    #                 v = net(zs)
+    #
+    #             vid[j] = torchvision.utils.make_grid(torch.clamp(v, 0, 1), nrow=int(np.sqrt(vid_batch)), padding=0)
+    #
+    #         show_video(vid, num_channels=args['n_channels'])
         
