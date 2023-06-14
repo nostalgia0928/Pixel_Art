@@ -56,7 +56,7 @@ args = {
     'dataset': 'easy_warrior',
     'n_channels': 3,   #default is 3
     'n_classes': 10,
-    'batch_size': 16,
+    'batch_size': 16,  # default is 16
     'vid_batch': 16,
     'latent_dim': 8,  # lower is better modelling but worst interpolation freedom
     'lr': 0.005,
@@ -290,7 +290,7 @@ print(f'> Size of training dataset {len(train_loader.dataset)}')
 
 
 def ot_loss(x, y):
-    return ot_loss_fn(x.contiguous().view(x.size(0), -1), y.view(y.size(0), -1))
+    return ot_loss_fn(x.contiguous().view(x.size(0), -1), y.contiguous().view(y.size(0), -1))
 
 
 def lerp(a, b, t):
@@ -309,21 +309,22 @@ def batch_get_unique_colors(rgb_image):   # BCHW
     rgb_image = rgb_image.permute(1, 0, 2, 3)
     reshaped_image = rgb_image.contiguous().view(rgb_image.shape[0], -1)
     unique_colors = torch.unique(reshaped_image, dim=1)
-    #print(unique_colors.size())
+    #print("Unique_colors size:",unique_colors.size())
     num_colors = unique_colors.shape[1]
     #print("Number of unique colors:", num_colors)
     return unique_colors
 
 
 def batch_rgb_to_palette(rgb_tensor, unique_colors):
+    #print("Rgb_tensor size: ", rgb_tensor.size())
     num_classes = unique_colors.shape[1]
     reshaped_tensor = rgb_tensor.permute(0, 2, 3, 1).contiguous().view(-1, rgb_tensor.shape[1])
     unique_colors = unique_colors.t()
     onehot = (reshaped_tensor[:, None, :] == unique_colors[None, :, :]).all(dim=2)  # None can add new dim
-    #print(onehot.size())
+    #print("Onehot size: ",onehot.size())
     onehot = onehot.view(rgb_tensor.shape[0], rgb_tensor.shape[2],
                          rgb_tensor.shape[3], num_classes).permute(0, 3, 1, 2).float()
-    #print(onehot.size())
+    #print("Onehot size: ",onehot.size())
     return onehot
 
 
@@ -385,15 +386,13 @@ class Decoder(nn.Module):
             nn.ReLU(),  # Output: [32, 64, 64]
 
             nn.LazyConvTranspose2d(n_channels, 4, stride=2, padding=1),
-            #nn.Sigmoid()  # Output: [3, 128, 128]
+            nn.Sigmoid()  # Output: [3, 128, 128]
         )
 
     def forward(self, z):
         x = self.decoder(z)
         # Crop from [3, 128, 128] to [3, 69, 44]
         x = x[:, :, :44, :69]
-        unique_colors = batch_get_unique_colors(x)
-        x = batch_rgb_to_palette(x, unique_colors)
         return x
 
 net = Decoder(args['latent_dim'], args['n_channels']).to(device)
@@ -452,7 +451,13 @@ while (True):
     p_z = torch.randn(args['batch_size'], args['latent_dim'], 1, 1).to(device)
     g = net(p_z)
 
+    # transform section:
+    g = batch_rgb_to_palette(g, unique_colors)
+    #print(g.requires_grad)
+
     loss = ot_loss(g, xb)  # ((g-xb)**2).mean()
+    loss.requires_grad = True   #Idk why I have to set up this after using palette
+    #print(loss.requires_grad)
     loss.backward()
     opt.step()
 
@@ -490,6 +495,9 @@ while (True):
             break
    
     if (global_step) % 50 == 49:
+        #palette to RGB
+        g = batch_palette_to_rgb(g, unique_colors)
+
         vid_batch = args['vid_batch']
         vis.image(
             torchvision.utils.make_grid(torch.clamp(g.data[:vid_batch], 0, 1), padding=0, nrow=int(np.sqrt(vid_batch))),
@@ -521,4 +529,4 @@ while (True):
     #             vid[j] = torchvision.utils.make_grid(torch.clamp(v, 0, 1), nrow=int(np.sqrt(vid_batch)), padding=0)
     #
     #         show_video(vid, num_channels=args['n_channels'])
-        
+    #
