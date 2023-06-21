@@ -432,7 +432,7 @@ while (True):
         xb = next(train_iterator)
         xb = xb.to(device)
         ##RGB to palette
-        unique_colors = batch_get_unique_colors(xb)
+        unique_colors = batch_get_unique_colors(xb)   #delete
         xb = batch_rgb_to_palette(xb, unique_colors)
     else:
         xb,cb = next(train_iterator)
@@ -452,7 +452,7 @@ while (True):
     g = net(p_z)
 
     # transform section:
-    g = batch_rgb_to_palette(g, unique_colors)
+    #g = batch_rgb_to_palette(g, unique_colors)
     #print(g.requires_grad)
 
     loss = ot_loss(g, xb)  # ((g-xb)**2).mean()
@@ -460,7 +460,7 @@ while (True):
     #print(loss.requires_grad)
     loss.backward()
     opt.step()
-
+    #g back to rgb
     # accumulate statistics
     logs['loss1'] += loss.item()
     logs['loss2'] += loss.item()
