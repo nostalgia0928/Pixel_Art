@@ -25,6 +25,7 @@ from functools import partial, lru_cache
 from torch.nn import functional as F
 from torch.nn import Parameter
 from PIL import Image
+import palette_transform_functions
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 vis = visdom.Visdom(server='http://ncc1.clients.dur.ac.uk', port=10086)
@@ -54,7 +55,7 @@ def cycle(iterable):
 args = {
     'width': 32,
     'dataset': 'easy_warrior',
-    'n_channels': 3,   #default is 3
+    'n_channels': 3,   #default is 3 ; related to palettefile; will be changed when choose dataset
     'n_classes': 10,
     'batch_size': 16,  # default is 16
     'vid_batch': 16,
@@ -90,6 +91,108 @@ def show_video(tensor, win="video", opts=None, num_channels=1):
                     videofile], input=b)
 
     return vis.video(videofile=videofile, win=win, opts=opts)
+
+#Functions defined by myself
+def getDatasetPalette(dataset, folder_path):
+    _, folder_name = os.path.split(folder_path)
+    parent_folder, _ = os.path.split(folder_path)  # save palette in parent folder
+    color_folder_path = os.path.join(parent_folder, "palette_tensors")
+    os.makedirs(color_folder_path, exist_ok=True)
+    filename = f"{folder_name}.pt"
+
+    file_path = os.path.join(color_folder_path, filename)
+    if os.path.exists(file_path):
+        # Load if exist
+        unique_colors_tensor = torch.load(file_path)
+        print("Loaded unique colors from file.")
+    else:
+        # if not exist, generate palette
+        all_colors_list = []
+        for rgb_image in dataset:
+            reshaped_image = rgb_image.view(3, -1)
+            all_colors_list.append(reshaped_image)
+
+        all_colors_tensor = torch.cat(all_colors_list, dim=1)  # Concatenate the tensors
+        unique_colors_tensor = torch.unique(all_colors_tensor, dim=1)  # Find unique colors
+
+        torch.save(unique_colors_tensor, file_path)
+        print("Saved unique colors to file.")
+
+    print(unique_colors_tensor.size())
+    num_colors = unique_colors_tensor.shape[1]
+    print("Number of unique colors:", num_colors)
+    return unique_colors_tensor
+
+
+def rgb_to_palette(rgb_tensor, unique_colors):  # CHW
+    num_classes = unique_colors.shape[1]
+
+    rgb_tensor = rgb_tensor.to(device)
+    unique_colors = unique_colors.to(device)
+
+    reshaped_tensor = rgb_tensor.permute(1, 2, 0).contiguous().view(-1, rgb_tensor.shape[0])
+    unique_colors = unique_colors.t()
+
+    onehot = (reshaped_tensor[:, None, :] == unique_colors[None, :, :]).all(dim=2)
+    onehot = onehot.view(rgb_tensor.shape[1], rgb_tensor.shape[2], num_classes).permute(2, 0, 1).float()
+
+    return onehot
+
+def palette_to_rgb(palette_tensor, unique_colors):  # CHW
+    num_classes = unique_colors.shape[1]
+
+    palette_tensor = palette_tensor.to(device)
+    unique_colors = unique_colors.to(device)
+
+    reshaped_palette = palette_tensor.permute(1, 2, 0).contiguous().view(-1, num_classes)
+    reshaped_unique_colors = unique_colors.t()
+
+    rgb_tensor = torch.matmul(reshaped_palette, reshaped_unique_colors)
+    rgb_tensor = rgb_tensor.view(palette_tensor.shape[1], palette_tensor.shape[2], 3).permute(2, 0, 1)
+
+    return rgb_tensor
+
+
+def palette_to_softmax(palette_tensor):  # palette_tensor CHW
+    channels, height, width = palette_tensor.shape
+
+    reshaped_palette = palette_tensor.permute(1, 2, 0).contiguous().view(-1, channels)
+    reshaped_palette = torch.softmax(reshaped_palette, dim=1)
+    palette_tensor = reshaped_palette.view(height, width, channels).permute(2, 0, 1)
+
+    # Test the softmax code
+    print(palette_tensor[:, 30, 22])
+    print(torch.sum(palette_tensor[:, 30, 22]))  # Inspect the probability mass function (PMF) for a specific pixel
+
+    return palette_tensor
+
+
+def softmax_to_palette(softmax_tensor):  # CHW
+    channels, height, width = softmax_tensor.shape
+
+    _, indices = torch.max(softmax_tensor, dim=0)
+    palette_tensor = torch.zeros(channels, height, width, device=softmax_tensor.device)  # Ensure both on GPU
+    palette_tensor.scatter_(0, indices.unsqueeze(0), 1)  # scatter(dim, index ,src)
+
+    print(indices.shape)
+    print(palette_tensor.shape)
+
+    return palette_tensor
+
+def tensor_to_image(input_tensor):
+    # Clone the tensor and detach it from the current computation graph
+    input_tensor = input_tensor.clone().detach()
+    # Change the range of the tensor from [0, 1] to [0, 255]
+    input_tensor = input_tensor * 255
+    # Convert the tensor to uint8 type
+    input_tensor = input_tensor.to(torch.uint8)
+    # Move the tensor to CPU and convert it to numpy array
+    input_numpy = input_tensor.cpu().numpy()
+    # Convert the shape of the numpy array from (C, H, W) to (H, W, C)
+    input_numpy = input_numpy.transpose((1, 2, 0))
+    # Create PIL image from numpy array
+    pil_image = Image.fromarray(input_numpy)
+    return pil_image
 
 
 class_names = ['apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle', 'bicycle', 'bottle', 'bowl',
@@ -265,6 +368,8 @@ class TreesDataset(torch.utils.data.Dataset):
 if args['dataset'] == 'easy_warrior':
     folder_path = os.getcwd() + "/Pictures/Warrior"
     dataset = WarriorDataset(folder_path, transform=True)
+    palettefile = getDatasetPalette(dataset, folder_path)
+    args['n_channels'] = palettefile.shape[1]
     train_loader = torch.utils.data.DataLoader(
         dataset,
         shuffle=True, batch_size=args['batch_size'], drop_last=True)
@@ -273,6 +378,8 @@ if args['dataset'] == 'easy_warrior':
 if args['dataset'] == 'intermediate_pokemon':
     folder_path = os.getcwd() + "/Pictures/Pokemon"
     dataset = PokemonDataset(folder_path, transform=True)
+    palettefile = getDatasetPalette(dataset, folder_path)
+    args['n_channels'] = palettefile.shape[1]
     train_loader = torch.utils.data.DataLoader(
         dataset,
         shuffle=True, batch_size=args['batch_size'], drop_last=True)
@@ -281,6 +388,8 @@ if args['dataset'] == 'intermediate_pokemon':
 if args['dataset'] == 'hard_trees':
     folder_path = os.getcwd() + "/Pictures/Trees"
     dataset = TreesDataset(folder_path, transform=True)
+    palettefile = getDatasetPalette(dataset, folder_path)
+    args['n_channels'] = palettefile.shape[1]
     train_loader = torch.utils.data.DataLoader(
         dataset,
         shuffle=True, batch_size=args['batch_size'], drop_last=True)
@@ -303,62 +412,6 @@ def slerp(a, b, t):
     res = (torch.sin((1.0 - t) * omega) / torch.sin(omega)) * a + (torch.sin(t * omega) / torch.sin(omega)) * b
     return res
 
-
-###functions for transform###
-def batch_get_unique_colors(rgb_image):   # BCHW
-    rgb_image = rgb_image.permute(1, 0, 2, 3)
-    reshaped_image = rgb_image.contiguous().view(rgb_image.shape[0], -1)
-    unique_colors = torch.unique(reshaped_image, dim=1)
-    #print("Unique_colors size:",unique_colors.size())
-    num_colors = unique_colors.shape[1]
-    #print("Number of unique colors:", num_colors)
-    return unique_colors
-
-
-def batch_rgb_to_palette(rgb_tensor, unique_colors):
-    #print("Rgb_tensor size: ", rgb_tensor.size())
-    num_classes = unique_colors.shape[1]
-    reshaped_tensor = rgb_tensor.permute(0, 2, 3, 1).contiguous().view(-1, rgb_tensor.shape[1])
-    unique_colors = unique_colors.t()
-    onehot = (reshaped_tensor[:, None, :] == unique_colors[None, :, :]).all(dim=2)  # None can add new dim
-    #print("Onehot size: ",onehot.size())
-    onehot = onehot.view(rgb_tensor.shape[0], rgb_tensor.shape[2],
-                         rgb_tensor.shape[3], num_classes).permute(0, 3, 1, 2).float()
-    #print("Onehot size: ",onehot.size())
-    return onehot
-
-
-def batch_palette_to_rgb(palette_tensor, unique_colors):
-    num_classes = unique_colors.shape[1]
-    reshaped_palette = palette_tensor.permute(0, 2, 3, 1).contiguous().view(-1, num_classes)
-    reshaped_unique_colors = unique_colors.t()
-    rgb_tensor = torch.matmul(reshaped_palette, reshaped_unique_colors)
-    rgb_tensor = rgb_tensor.view(palette_tensor.shape[0], 3, palette_tensor.shape[2], palette_tensor.shape[3])
-    return rgb_tensor
-
-
-def batch_palette_to_softmax(palette_tensor):  # palette_tensor BCHW
-    channels = palette_tensor.shape[-3]
-    reshaped_palette = palette_tensor.permute(0, 2, 3, 1).contiguous().view(-1, channels)
-    #print(reshaped_palette.size())
-    reshaped_palette = torch.softmax(reshaped_palette, dim=1)
-    palette_tensor = reshaped_palette.view(palette_tensor.shape[0], palette_tensor.shape[2], palette_tensor.shape[3],
-                                           channels).permute(0, 3, 1, 2)
-    #print(palette_tensor.size())
-    # Test the softmax code
-    #print(palette_tensor[0, :, 30, 22])
-    #print(sum(palette_tensor[4, :, 30, 22]))  # Inspect the probability mass function (PMF) for a specific pixe
-    return palette_tensor
-
-def batch_softmax_to_palette(softmax_tensor): #BCHW
-    _, indices = torch.max(softmax_tensor, dim=1)
-    #print(indices.size())
-    b, h, w = softmax_tensor.shape[0], softmax_tensor.shape[2], softmax_tensor.shape[3]
-    device = softmax_tensor.device  # Ensure both on GPU
-    palette_tensor = torch.zeros(b, softmax_tensor.shape[1], h, w, device=device)
-    palette_tensor.scatter_(1, indices.unsqueeze(1), 1)  # indice -> (B, 1, H, W) scatter(dim, index ,src) ？？？
-    #print(palette_tensor.size())
-    return palette_tensor
 
 
 class Decoder(nn.Module):
@@ -432,8 +485,12 @@ while (True):
         xb = next(train_iterator)
         xb = xb.to(device)
         ##RGB to palette
-        unique_colors = batch_get_unique_colors(xb)   #delete
-        xb = batch_rgb_to_palette(xb, unique_colors)
+        processed_images = []
+        for i in range(xb.shape[0]):     #The function receives CHW but xb is BCHW
+            single_image = xb[i, :, :, :]
+            processed_image = rgb_to_palette(single_image, palettefile)
+            processed_images.append(processed_image)
+        xb = torch.stack(processed_images, dim=0)   #Use stack to get BCHW; Now xb is a palette tensor
     else:
         xb,cb = next(train_iterator)
         xb,cb = xb.to(device), cb.to(device)
@@ -461,6 +518,14 @@ while (True):
     loss.backward()
     opt.step()
     #g back to rgb
+    for i in range(g.shape[0]):  # The function receives CHW but g is BCHW
+        single_image = g[i, :, :, :]
+        processed_image = palette_to_rgb(single_image, palettefile)
+        processed_images.append(processed_image)
+    g= torch.stack(processed_images, dim=0)  # Use stack to get BCHW; Now g is a rgb tensor
+
+    # 将处理后的图像列表转换为一个张量
+    processed_images = torch.stack(processed_images, dim=0)
     # accumulate statistics
     logs['loss1'] += loss.item()
     logs['loss2'] += loss.item()
@@ -495,9 +560,6 @@ while (True):
             break
    
     if (global_step) % 50 == 49:
-        #palette to RGB
-        g = batch_palette_to_rgb(g, unique_colors)
-
         vid_batch = args['vid_batch']
         vis.image(
             torchvision.utils.make_grid(torch.clamp(g.data[:vid_batch], 0, 1), padding=0, nrow=int(np.sqrt(vid_batch))),
