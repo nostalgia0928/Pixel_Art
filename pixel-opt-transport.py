@@ -25,7 +25,6 @@ from functools import partial, lru_cache
 from torch.nn import functional as F
 from torch.nn import Parameter
 from PIL import Image
-import palette_transform_functions
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 vis = visdom.Visdom(server='http://ncc1.clients.dur.ac.uk', port=10086)
@@ -444,7 +443,7 @@ class Decoder(nn.Module):
 
     def forward(self, z):
         x = self.decoder(z)
-        # Crop from [3, 128, 128] to [3, 69, 44]
+        # Crop from [3, 128, 128] to [3, 44, 69]
         x = x[:, :, :44, :69]
         return x
 
@@ -485,12 +484,12 @@ while (True):
         xb = next(train_iterator)
         xb = xb.to(device)
         ##RGB to palette
-        processed_images = []
+        xb_processed_images = []
         for i in range(xb.shape[0]):     #The function receives CHW but xb is BCHW
             single_image = xb[i, :, :, :]
             processed_image = rgb_to_palette(single_image, palettefile)
-            processed_images.append(processed_image)
-        xb = torch.stack(processed_images, dim=0)   #Use stack to get BCHW; Now xb is a palette tensor
+            xb_processed_images.append(processed_image)
+        xb = torch.stack(xb_processed_images, dim=0)   #Use stack to get BCHW; Now xb is a palette tensor
     else:
         xb,cb = next(train_iterator)
         xb,cb = xb.to(device), cb.to(device)
@@ -513,19 +512,18 @@ while (True):
     #print(g.requires_grad)
 
     loss = ot_loss(g, xb)  # ((g-xb)**2).mean()
-    loss.requires_grad = True   #Idk why I have to set up this after using palette
+    #loss.requires_grad = True   #Idk why I have to set up this after using palette
     #print(loss.requires_grad)
     loss.backward()
     opt.step()
     #g back to rgb
+    g_processed_images = []
     for i in range(g.shape[0]):  # The function receives CHW but g is BCHW
         single_image = g[i, :, :, :]
         processed_image = palette_to_rgb(single_image, palettefile)
-        processed_images.append(processed_image)
-    g= torch.stack(processed_images, dim=0)  # Use stack to get BCHW; Now g is a rgb tensor
+        g_processed_images.append(processed_image)
+    g= torch.stack(g_processed_images, dim=0)  # Use stack to get BCHW; Now g is a rgb tensor
 
-    # 将处理后的图像列表转换为一个张量
-    processed_images = torch.stack(processed_images, dim=0)
     # accumulate statistics
     logs['loss1'] += loss.item()
     logs['loss2'] += loss.item()
@@ -558,37 +556,43 @@ while (True):
             vis.text('', win='quit')
             print("Exiting safely...")
             break
-   
+
     if (global_step) % 50 == 49:
         vid_batch = args['vid_batch']
         vis.image(
             torchvision.utils.make_grid(torch.clamp(g.data[:vid_batch], 0, 1), padding=0, nrow=int(np.sqrt(vid_batch))),
             win='p_xg0', opts={'title': 'p_xg0 reconstructions', 'jpgquality': 50})
 
-    # if (global_step) % 100 == 99:
-    #     with torch.no_grad():
-    #
-    #         vid_batch = args['vid_batch']
-    #
-    #         # Show latent interpolations SLERP video
-    #         z1 = sample_prior()[:vid_batch]
-    #         z2 = sample_prior()[:vid_batch]
-    #
-    #         frames = 64
-    #
-    #         ts = torch.linspace(0, 1, frames)
-    #         #vsx = args['width'] * int(np.sqrt(vid_batch))
-    #         #vid = torch.zeros(frames, 3, vsx, vsx)
-    #
-    #         #Warrior test case
-    #         vid = torch.zeros(frames, 3, 176, 276)
-    #
-    #         for j in range(frames):
-    #             zs = lerp(z1, z2, ts[j])
-    #             with torch.no_grad():
-    #                 v = net(zs)
-    #
-    #             vid[j] = torchvision.utils.make_grid(torch.clamp(v, 0, 1), nrow=int(np.sqrt(vid_batch)), padding=0)
-    #
-    #         show_video(vid, num_channels=args['n_channels'])
-    #
+    if (global_step) % 100 == 99:
+        with torch.no_grad():
+
+            vid_batch = args['vid_batch']
+
+            # Show latent interpolations SLERP video
+            z1 = sample_prior()[:vid_batch]
+            z2 = sample_prior()[:vid_batch]
+
+            frames = 64
+
+            ts = torch.linspace(0, 1, frames)
+            #vsx = args['width'] * int(np.sqrt(vid_batch))
+            #vid = torch.zeros(frames, 3, vsx, vsx)
+
+            #Warrior test case
+            vid = torch.zeros(frames, 3, 176, 276)
+
+            for j in range(frames):
+                zs = lerp(z1, z2, ts[j])
+                with torch.no_grad():
+                    v = net(zs)
+                    v_processed_images = []
+                    for i in range(v.shape[0]):  # The function receives CHW but g is BCHW
+                        single_image = v[i, :, :, :]
+                        processed_image = palette_to_rgb(single_image, palettefile)
+                        v_processed_images.append(processed_image)
+                    v = torch.stack(v_processed_images, dim=0)  # Use stack to get BCHW; Now g is a rgb tensor
+
+                vid[j] = torchvision.utils.make_grid(torch.clamp(v, 0, 1), nrow=int(np.sqrt(vid_batch)), padding=0)
+
+            show_video(vid, num_channels=3)
+
