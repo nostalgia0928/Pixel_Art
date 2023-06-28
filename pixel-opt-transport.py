@@ -437,8 +437,8 @@ class Decoder(nn.Module):
             nn.LazyBatchNorm2d(),
             nn.ReLU(),  # Output: [32, 64, 64]
 
-            nn.LazyConvTranspose2d(n_channels, 4, stride=2, padding=1),
-            nn.Sigmoid()  # Output: [3, 128, 128]
+            nn.LazyConvTranspose2d(n_channels, 4, stride=2, padding=1)
+            #nn.Sigmoid()  # Output: [3, 128, 128]
         )
 
     def forward(self, z):
@@ -506,7 +506,7 @@ while (True):
 
     p_z = torch.randn(args['batch_size'], args['latent_dim'], 1, 1).to(device)
     g = net(p_z)
-
+    g = torch.softmax(g, dim=1)
     # transform section:
     #g = batch_rgb_to_palette(g, unique_colors)
     #print(g.requires_grad)
@@ -585,6 +585,7 @@ while (True):
                 zs = lerp(z1, z2, ts[j])
                 with torch.no_grad():
                     v = net(zs)
+                    v = torch.softmax(v, dim=1)
                     v_processed_images = []
                     for i in range(v.shape[0]):  # The function receives CHW but g is BCHW
                         single_image = v[i, :, :, :]
