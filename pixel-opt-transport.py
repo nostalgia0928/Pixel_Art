@@ -394,7 +394,7 @@ if args['dataset'] == 'hard_trees':
         shuffle=True, batch_size=args['batch_size'], drop_last=True)
     train_iterator = iter(cycle(train_loader))
 
-print(f'> Size of training dataset {len(train_loader.dataset)}')
+print(f'> Size of training dataset {len( train_loader.dataset)}')
 
 
 def ot_loss(x, y):

@@ -1,0 +1,81 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{times}
+\usepackage{durhampaper}
+\usepackage{harvard}
+
+\citationmode{abbr}
+\bibliographystyle{agsm}
+
+\title{Formatting Template for MISCADA Project Paper}
+\author{} % leave; your name goes into \student{}
+\student{A.N. Other}
+\supervisor{Y.A.A.N. Other}
+\degree{M.Sc. MISCADA}
+
+\date{}
+
+\usepackage[margin=2cm]{geometry}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+These instructions give you guidelines for preparing the final paper. Do not cite references in the abstract.
+\end{abstract}
+
+\begin{keywords}
+Put a few keywords here.
+\end{keywords}
+
+\section{Introduction}
+This section briefly introduces the general project background, the research question you are addressing, and the project objectives. Do not change the font sizes or line spacing to put in more text. 
+
+Note that the whole report should not be longer than 20 pages in length (excluding references). It should be noted that not all the details of the work carried out in the project can be represented in 20 pages. It is therefore vital that the Project Log book be kept up to date as this may be used as supplementary material when the project paper is marked. Also, appropriate implementation details (if needed), such as parts of source code or circuit diagrams, should normally be included as a clearly marked Appendix, together with indications of sample runs.
+
+
+\section{Related Work}
+This section presents a survey of existing work on the problems that this project addresses. Its length is usually about 2 pages, although this can vary in different projects. The rest of this section shows the format of subsections as well as some general formatting information for tables, figures, references, and equations.
+
+\subsection{Main Text}
+
+The font size in the main text should be 11pt. The first line of all paragraphs should be indented, except for the first paragraph of each section, subsection, subsubsection, etc. (the paragraph immediately after the header) where no indentation is needed.
+
+\subsection{Figures and Tables}
+In general, figures and tables should not appear before they are cited. Place figure captions below the figures; place table titles above the tables. If your figure has two parts, for example, include the labels "(a)" and "(b)" as part of the artwork. Please verify that figures and tables that you mention in the text actually exist. Make Example tables and figures are shown in Table 1 and Figure 1, respectively.
+
+\begin{table}[htb]
+\centering
+\caption{UNITS FOR MAGNETIC PROPERTIES}
+\vspace*{6pt}
+\label{units}
+\begin{tabular}{ccc}\hline\hline
+Symbol & Quantity & Conversion from Gaussian \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{References}
+
+The list of cited references should appear at the end of the report, ordered alphabetically by the surnames of the first authors. These should be either in Harvard format (author, date) or in Vancouver format (numeric, with citations in numeric square brackets). The Harvard (author, date) format is described again now (if you choose another recognized style such as the Vancouver format, you must use it in a consistent way). When citing a book, please give the relevant page numbers as in \cite[pages 293-305]{Golumbic04}.  Whenever there are either one or two authors, as in \cite{mertziosspirakis13}, mention all their names, but if there are three or more authors, give the first one and use ``et al.'' as in \cite{mertzios2019temporal,enright2019deleting}, except where this would be ambiguous, in which case use all author names.
+
+
+
+
+
+
+\section{Solution}
+
+This section can present the proposed solutions of the problems in detail. The design and description of the implementation details should all be placed in this section. You may create several subsections, each focusing on one issue.
+
+\section{Results and Evaluation}
+
+This section can present the results of the solutions together with an evaluation of the results and the project. It should include information on experimental settings. The results should demonstrate the claimed benefits/advantages of the proposed solutions.
+
+\section{Conclusion}
+
+This section summarizes the main points of this paper. Do not replicate the abstract as the conclusion. A conclusion might elaborate on the importance of the work or suggest applications and extensions. This section is usually about 1 page in length.
+
+\bibliography{bibliography}
+
+
+\end{document}
